@@ -3,264 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>毕业季特别礼物 - 粒子相册</title>
+    <title>Happy Graduation - Santa Clara Cougars</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background-color: #000; overflow: hidden; color: white; font-family: sans-serif; }
-        canvas { display: block; }
-        .glass { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        @keyframes pulse-soft { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
-        .animate-pulse-soft { animation: pulse-soft 3s infinite; }
+        body { margin: 0; overflow: hidden; background: #000; color: white; font-family: 'Inter', sans-serif; }
+        canvas { touch-action: none; }
+        .font-cursive { font-family: 'Great Vibes', cursive; }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .breathing { animation: breathe 3s infinite ease-in-out; }
+        @keyframes breathe { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
     </style>
 </head>
 <body>
-
-    <div class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6">
-        <div class="flex justify-between items-start">
-            <div class="glass p-3 rounded-2xl pointer-events-auto w-44 shadow-2xl">
-                <div class="relative aspect-video bg-black/40 rounded-lg overflow-hidden mb-2 border border-white/10">
-                    <video id="webcam" autoplay playsinline class="w-full h-full object-cover" style="transform: scaleX(-1);"></video>
-                    <div id="cam-off" class="absolute inset-0 flex items-center justify-center text-[10px] text-white/30">摄像头未开启</div>
-                </div>
-                <button id="toggle-cam" class="w-full py-1.5 rounded-lg text-[10px] font-bold bg-white/10 hover:bg-white/20 transition-all">开启手势识别</button>
-                <div id="gesture-text" class="mt-2 text-[10px] text-cyan-400 text-center font-mono tracking-widest">---</div>
-            </div>
-
-            <div class="text-right">
-                <h1 class="text-4xl md:text-5xl font-bold tracking-tighter">GRADUATION 2024</h1>
-                <p class="text-white/40 text-xs mt-1 tracking-[0.2em]">给小朋友们的毕业特别礼物</p>
-            </div>
-        </div>
-
-        <div id="hint-text" class="text-center text-white/40 text-sm animate-pulse-soft tracking-widest">
-            点击下方播放音乐开始体验
-        </div>
-
-        <div class="flex justify-center">
-            <div id="music-btn" class="glass px-8 py-4 rounded-full pointer-events-auto cursor-pointer flex items-center gap-4 transition-all hover:scale-105 active:scale-95">
-                <div id="music-icon" class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-400 flex items-center justify-center text-xl">🎵</div>
-                <div class="flex flex-col">
-                    <span class="text-sm font-semibold">听我说谢谢你</span>
-                    <span id="music-status" class="text-[10px] text-white/40 uppercase tracking-widest">点击播放</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <audio id="bg-music" src="music.m4a" loop></audio>
+    <div id="root"></div>
 
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "react": "https://esm.sh/react@18.2.0",
+                "react-dom": "https://esm.sh/react-dom@18.2.0",
+                "three": "https://esm.sh/three@0.160.0",
+                "@react-three/fiber": "https://esm.sh/@react-three/fiber@8.15.11",
+                "@react-three/drei": "https://esm.sh/@react-three/drei@9.92.7",
+                "gsap": "https://esm.sh/gsap@3.12.2",
+                "zustand": "https://esm.sh/zustand@4.4.7",
+                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0"
             }
         }
     </script>
 
     <script type="module">
+        import React, { useState, useRef, useMemo, useEffect } from 'react';
+        import { createRoot } from 'react-dom';
         import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { Canvas, useFrame, useThree } from '@react-three/fiber';
+        import { Stars, Sparkles, Float, Text, Environment, PerspectiveCamera, useTexture, MeshWobbleMaterial, OrbitControls } from '@react-three/drei';
+        import gsap from 'gsap';
+        import { create } from 'zustand';
 
-        // 状态变量
-        let phase = 'photo'; // photo, blooming, nebula, collapsing
-        let isMusicPlaying = false;
-        let particles, material;
-        const clock = new THREE.Clock();
+        // --- 1. 状态管理 (Zustand) ---
+        const useStore = create((set) => ({
+            phase: 'tree', // tree, blooming, nebula, collapsing
+            gesture: 'None',
+            currentMusicIndex: 0,
+            isPlaying: false,
+            isCameraOn: false,
+            setPhase: (p) => set({ phase: p }),
+            setGesture: (g) => set({ gesture: g }),
+            setCamera: (val) => set({ isCameraOn: val }),
+            setMusic: (idx) => set({ currentMusicIndex: idx }),
+            togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
+        }));
 
-        // 1. 初始化场景
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 20;
+        const PHOTO_URLS = Array.from({ length: 10 }, (_, i) => `https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/images/photo${i + 1}.jpg`);
+        const MUSIC_LIST = [
+            { name: "听我说谢谢你", url: "https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/music/music1.m4a" },
+            { name: "健康过好年", url: "https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/music/music2.m4a" },
+            { name: "热爱105度的你", url: "https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/music/music3.m4a" },
+            { name: "新年好马", url: "https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/music/music4.m4a" }
+        ];
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.body.appendChild(renderer.domElement);
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.enablePan = false;
-
-        // 2. 创建粒子系统
-        async function initParticles() {
-            const textureLoader = new THREE.TextureLoader();
-            const img = new Image();
-            img.src = 'photo.jpg';
+        // --- 2. 粒子圣诞树组件 ---
+        function ParticleTree() {
+            const meshRef = useRef();
+            const count = 5000;
+            const phase = useStore(state => state.phase);
+            const setPhase = useStore(state => state.setPhase);
             
-            await new Promise(resolve => img.onload = resolve);
+            // 生成初始圆锥位置
+            const [positions, targets] = useMemo(() => {
+                const pos = new Float32Array(count * 3);
+                const tar = new Float32Array(count * 3);
+                for (let i = 0; i < count; i++) {
+                    const r = Math.random();
+                    const angle = Math.random() * Math.PI * 2;
+                    const height = Math.random() * 10;
+                    const radius = (1 - height / 10) * 3;
+                    pos[i * 3] = radius * Math.cos(angle);
+                    pos[i * 3 + 1] = height - 5;
+                    pos[i * 3 + 2] = radius * Math.sin(angle);
+                    
+                    // 预设星云目标位置 (环状)
+                    const ringR = 15 + Math.random() * 5;
+                    const ringA = Math.random() * Math.PI * 2;
+                    tar[i * 3] = ringR * Math.cos(ringA);
+                    tar[i * 3 + 1] = (Math.random() - 0.5) * 10;
+                    tar[i * 3 + 2] = ringR * Math.sin(ringA);
+                }
+                return [pos, tar];
+            }, []);
 
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const size = 120;
-            canvas.width = size;
-            canvas.height = Math.floor(size * (img.height / img.width));
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const dummy = new THREE.Object3D();
 
-            const positions = [];
-            const colors = [];
-            const targets = [];
+            useFrame((state) => {
+                const time = state.clock.getElapsedTime();
+                for (let i = 0; i < count; i++) {
+                    let x = positions[i * 3];
+                    let y = positions[i * 3 + 1];
+                    let z = positions[i * 3 + 2];
 
-            for (let y = 0; y < canvas.height; y++) {
-                for (let x = 0; x < canvas.width; x++) {
-                    const i = (y * canvas.width + x) * 4;
-                    if (pixels[i + 3] > 128) {
-                        // 原始照片位置
-                        positions.push((x - canvas.width / 2) * 0.12, -(y - canvas.height / 2) * 0.12, 0);
-                        // 颜色
-                        colors.push(pixels[i] / 255, pixels[i + 1] / 255, pixels[i + 2] / 255);
-                        // 爆炸目标位置
-                        const r = 10 + Math.random() * 10;
-                        const theta = Math.random() * Math.PI * 2;
-                        const phi = Math.acos((Math.random() * 2) - 1);
-                        targets.push(
-                            r * Math.sin(phi) * Math.cos(theta),
-                            r * Math.sin(phi) * Math.sin(theta) * 0.6,
-                            r * Math.cos(phi)
+                    // 交互斥力 (鼠标)
+                    const dist = new THREE.Vector3(x, y, z).distanceTo(state.mouse.clone().multiplyScalar(5));
+                    if (dist < 2 && phase === 'tree') {
+                        x += (x / dist) * 0.5;
+                        z += (z / dist) * 0.5;
+                    }
+
+                    dummy.position.set(x, y, z);
+                    dummy.updateMatrix();
+                    meshRef.current.setMatrixAt(i, dummy.matrix);
+                }
+                meshRef.current.instanceMatrix.needsUpdate = true;
+            });
+
+            // 监听阶段切换动画
+            useEffect(() => {
+                if (phase === 'blooming') {
+                    // 炸开动画
+                    gsap.to(positions, {
+                        endArray: targets,
+                        duration: 2.5,
+                        ease: "expo.out",
+                        onComplete: () => setPhase('nebula')
+                    });
+                } else if (phase === 'collapsing') {
+                    // 收缩动画逻辑同理
+                    setPhase('tree');
+                }
+            }, [phase]);
+
+            return (
+                <instancedMesh ref={meshRef} args={[null, null, count]}>
+                    <sphereGeometry args={[0.04, 8, 8]} />
+                    <meshStandardMaterial color="#4ade80" emissive="#166534" />
+                </instancedMesh>
+            );
+        }
+
+        // --- 3. 照片墙组件 ---
+        function PhotoWall() {
+            const phase = useStore(state => state.phase);
+            const textures = useTexture(PHOTO_URLS);
+
+            return (
+                <group visible={phase === 'nebula' || phase === 'blooming'}>
+                    {textures.map((txt, i) => {
+                        const angle = (i / 10) * Math.PI * 2;
+                        const x = Math.cos(angle) * 12;
+                        const z = Math.sin(angle) * 12;
+                        const isHorizontal = txt.image.width > txt.image.height;
+
+                        return (
+                            <Float key={i} speed={2} rotationIntensity={0.5} floatIntensity={1}>
+                                <mesh position={[x, 0, z]} rotation={[0, -angle + Math.PI/2, 0]}>
+                                    <boxGeometry args={[isHorizontal ? 4 : 3, isHorizontal ? 3 : 4, 0.1]} />
+                                    <meshStandardMaterial map={txt} />
+                                    {/* 拍立得相框效果 */}
+                                    <mesh position={[0, 0, -0.06]}>
+                                        <boxGeometry args={[isHorizontal ? 4.2 : 3.2, isHorizontal ? 3.8 : 4.8, 0.05]} />
+                                        <meshStandardMaterial color="white" />
+                                    </mesh>
+                                </mesh>
+                            </Float>
                         );
-                    }
-                }
-            }
-
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            geometry.setAttribute('target', new THREE.Float32BufferAttribute(targets, 3));
-
-            material = new THREE.ShaderMaterial({
-                uniforms: {
-                    uTime: { value: 0 },
-                    uProgress: { value: 0 }
-                },
-                vertexShader: `
-                    uniform float uTime;
-                    uniform float uProgress;
-                    attribute vec3 target;
-                    attribute vec3 color;
-                    varying vec3 vColor;
-                    void main() {
-                        vColor = color;
-                        vec3 pos = mix(position, target, uProgress);
-                        pos.y += sin(uTime + position.x) * 0.1 * uProgress;
-                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-                        gl_PointSize = 4.0 * (20.0 / -mvPosition.z);
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vColor;
-                    void main() {
-                        if (length(gl_PointCoord - vec2(0.5)) > 0.5) discard;
-                        gl_FragColor = vec4(vColor, 1.0);
-                    }
-                `,
-                transparent: true,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
-            });
-
-            particles = new THREE.Points(geometry, material);
-            scene.add(particles);
+                    })}
+                </group>
+            );
         }
 
-        initParticles();
+        // --- 4. UI 覆盖层组件 ---
+        function Overlay() {
+            const { phase, gesture, currentMusicIndex, isPlaying, setCamera, isCameraOn, setMusic, togglePlay } = useStore();
+            const audioRef = useRef(null);
 
-        // 3. 动画循环
-        function animate() {
-            requestAnimationFrame(animate);
-            const t = clock.getElapsedTime();
-            if (material) material.uniforms.uTime.value = t;
-            
-            // 状态平滑过渡
-            if (material) {
-                const targetProgress = (phase === 'blooming' || phase === 'nebula') ? 1 : 0;
-                material.uniforms.uProgress.value += (targetProgress - material.uniforms.uProgress.value) * 0.05;
-            }
+            useEffect(() => {
+                if (isPlaying) audioRef.current?.play();
+                else audioRef.current?.pause();
+            }, [isPlaying, currentMusicIndex]);
 
-            if (particles && phase === 'nebula') {
-                particles.rotation.y += 0.002;
-            }
+            return (
+                <div className="fixed inset-0 pointer-events-none flex flex-col justify-between p-8">
+                    {/* Header */}
+                    <div className="flex justify-between items-start pointer-events-auto">
+                        <div className="glass p-4 rounded-xl">
+                            <p className="text-xs uppercase tracking-widest text-white/60">Status</p>
+                            <p className="text-lg font-bold">Phase: {phase.toUpperCase()}</p>
+                            <p className="text-sm text-green-400">Gesture: {gesture}</p>
+                        </div>
+                        
+                        <div className="glass p-4 rounded-xl text-right">
+                            <button 
+                                onClick={() => setCamera(!isCameraOn)}
+                                className="bg-white/20 hover:bg-white/40 px-4 py-2 rounded-lg transition"
+                            >
+                                {isCameraOn ? "CLOSE CAMERA" : "OPEN CAMERA"}
+                            </button>
+                        </div>
+                    </div>
 
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
+                    {/* Center Title */}
+                    {phase === 'tree' && (
+                        <div className="text-center transition-opacity duration-1000">
+                            <h1 className="text-7xl font-cursive text-yellow-400 drop-shadow-2xl mb-4">Happy Graduation</h1>
+                            <p className="text-white/70 tracking-widest">A SPECIAL GIFT FROM MR. HUANG TO SANTA CLARA COUGARS</p>
+                        </div>
+                    )}
 
-        // 4. 音乐与手势交互
-        const musicBtn = document.getElementById('music-btn');
-        const audio = document.getElementById('bg-music');
-        const musicStatus = document.getElementById('music-status');
-        const musicIcon = document.getElementById('music-icon');
-
-        musicBtn.onclick = () => {
-            isMusicPlaying = !isMusicPlaying;
-            if (isMusicPlaying) {
-                audio.play();
-                musicStatus.innerText = '正在播放';
-                musicIcon.classList.add('animate-spin');
-            } else {
-                audio.pause();
-                musicStatus.innerText = '已暂停';
-                musicIcon.classList.remove('animate-spin');
-            }
-        };
-
-        // 5. 手势识别集成
-        const video = document.getElementById('webcam');
-        const toggleCamBtn = document.getElementById('toggle-cam');
-        const gestureText = document.getElementById('gesture-text');
-        let handLandmarker;
-
-        async function initHandTracking() {
-            const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm');
-            const fileset = await vision.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-            handLandmarker = await vision.HandLandmarker.createFromOptions(fileset, {
-                baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate: "GPU" },
-                runningMode: "VIDEO", numHands: 1
-            });
-        }
-
-        toggleCamBtn.onclick = async () => {
-            if (!handLandmarker) {
-                toggleCamBtn.innerText = '加载模型中...';
-                await initHandTracking();
-            }
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            document.getElementById('cam-off').classList.add('hidden');
-            toggleCamBtn.innerText = '识别中';
-            detectHands();
-        };
-
-        function detectHands() {
-            if (handLandmarker && video.readyState >= 2) {
-                const results = handLandmarker.detectForVideo(video, performance.now());
-                if (results.landmarks && results.landmarks.length > 0) {
-                    const l = results.landmarks;
-                    // 简单判断：指尖高于关节为张开
-                    const isOpen = l.y < l.y && l.y < l.y;
-                    const isFist = l.y > l.y && l.y > l.y;
-
-                    if (isOpen && phase === 'photo') {
-                        phase = 'blooming';
-                        gestureText.innerText = '👋 张开';
-                        setTimeout(() => phase = 'nebula', 2000);
-                    } else if (isFist && phase === 'nebula') {
-                        phase = 'collapsing';
-                        gestureText.innerText = '✊ 握拳';
-                        setTimeout(() => phase = 'photo', 2000);
-                    }
-                }
-            }
-            requestAnimationFrame(detectHands);
+                    {/* Bottom Music Player */}
+                    <div className="flex flex-col items-center pointer-events-auto">
+                        <div className="glass px-8 py-4 rounded-full flex items-center gap-6 mb-4">
+                            <div className={`w-8 h-8 flex items-center justify-center ${isPlaying ? 'animate-spin' : ''}`}>
+                                ❄️
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs text-white/50">Now Playing</p>
+                                <p className="font-medium">{MUSIC_LIST[currentMusicIndex].name}</p>
+                            </div>
+                            <button onClick={togglePlay} className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center">
+                                {isPlaying ? "⏸" : "▶️"}
+                            </button>
+                            <button onClick={() => setMusic((currentMusicIndex + 1) % 4)} className="text-xl">⏭</button>
+                        </div>
+                        <audio ref={audioRef} src={MUSIC_LIST[currentMusicIndex].url} loop />
+                    </div>
+                </div>
+            );
         }
 
-        window.onresize = () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        };
+        // --- 5. 主场景组件 ---
+        function Scene() {
+            return (
+                <>
+                    <color attach="background" args={['#020205']} />
+                    <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+                    <Sparkles count={200} scale={20} size={2} speed={0.4} color="orange" />
+                    
+                    <ambientLight intensity={0.2} />
+                    <pointLight position={} intensity={1.5} color="#ffd700" />
+                    <spotLight position={} angle={0.3} penumbra={1} intensity={2} castShadow />
+                    
+                    <ParticleTree />
+                    <PhotoWall />
+
+                    <Environment preset="city" />
+                    <OrbitControls enableZoom={true} enablePan={false} maxDistance={30} minDistance={5} />
+                </>
+            );
+        }
+
+        // --- 6. 根应用渲染 ---
+        function App() {
+            return (
+                <div className="w-full h-screen">
+                    <Canvas shadows camera={{ position:, fov: 45 }}>
+                        <Scene />
+                    </Canvas>
+                    <Overlay />
+                </div>
+            );
+        }
+
+        createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
