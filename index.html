@@ -1,758 +1,1277 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Happy Graduation</title>
-
+<title>Happy Graduation 🎓</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
+  :root {
+    --gold: #f5c842;
+    --gold-glow: #ffdd55;
+    --bg: #000408;
+    --glass: rgba(255,255,255,0.06);
+    --glass-border: rgba(255,255,255,0.12);
+  }
 
-body{
-    overflow:hidden;
-    background:black;
-    font-family:Arial, sans-serif;
-}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-canvas{
-    display:block;
-}
+  body {
+    background: var(--bg);
+    color: #fff;
+    font-family: 'Cormorant Garamond', serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
 
-#titleBox{
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    text-align:center;
-    z-index:10;
-    pointer-events:none;
-}
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
 
-#mainTitle{
-    font-size:72px;
-    color:#FFD700;
-    font-weight:bold;
+  canvas { display: block; }
 
+  /* ─── TITLE ─── */
+  #title-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+    transition: opacity 0.8s ease;
+  }
+
+  #title-overlay h1 {
+    font-family: 'Dancing Script', cursive;
+    font-size: clamp(2.5rem, 7vw, 6rem);
+    color: var(--gold);
     text-shadow:
-    0 0 10px #FFD700,
-    0 0 30px #FFD700,
-    0 0 60px #FFD700;
-}
+      0 0 20px rgba(245,200,66,0.9),
+      0 0 40px rgba(245,200,66,0.6),
+      0 0 80px rgba(245,200,66,0.3);
+    letter-spacing: 2px;
+    animation: titlePulse 3s ease-in-out infinite;
+  }
 
-#subTitle{
-    margin-top:15px;
-    color:white;
-    font-size:18px;
-}
+  #title-overlay p {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.85rem, 2vw, 1.2rem);
+    color: rgba(255,255,255,0.7);
+    margin-top: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
 
-#statusBox{
+  @keyframes titlePulse {
+    0%, 100% { text-shadow: 0 0 20px rgba(245,200,66,0.9), 0 0 40px rgba(245,200,66,0.6), 0 0 80px rgba(245,200,66,0.3); }
+    50% { text-shadow: 0 0 30px rgba(245,200,66,1), 0 0 60px rgba(245,200,66,0.8), 0 0 120px rgba(245,200,66,0.5); }
+  }
 
-    position:absolute;
+  /* ─── STATUS HUD ─── */
+  #status-hud {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 20;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 14px 20px;
+    max-width: 260px;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.85);
+  }
 
-    top:20px;
-    left:20px;
+  #status-hud .phase-badge {
+    display: inline-block;
+    background: rgba(245,200,66,0.15);
+    border: 1px solid rgba(245,200,66,0.4);
+    color: var(--gold);
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
 
-    color:white;
+  #status-hud .hint {
+    color: rgba(255,255,255,0.55);
+    font-size: 0.78rem;
+  }
 
-    z-index:10;
+  /* ─── CAMERA PANEL ─── */
+  #camera-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 20;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    padding: 14px;
+    width: 200px;
+    text-align: center;
+  }
 
-    background:rgba(255,255,255,.08);
+  #camera-panel h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 10px;
+  }
 
-    backdrop-filter:blur(20px);
+  #camera-preview {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: rgba(0,0,0,0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
 
-    border-radius:20px;
+  #camera-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    border-radius: 12px;
+  }
 
-    padding:20px;
-}
+  #gesture-display {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.7);
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+    min-height: 24px;
+  }
 
-#musicPlayer{
+  #camera-btn {
+    width: 100%;
+    padding: 8px;
+    background: rgba(245,200,66,0.15);
+    border: 1px solid rgba(245,200,66,0.4);
+    color: var(--gold);
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+  }
 
-    position:absolute;
+  #camera-btn:hover {
+    background: rgba(245,200,66,0.25);
+    border-color: var(--gold);
+  }
 
-    bottom:30px;
-    left:50%;
+  /* ─── MUSIC PLAYER ─── */
+  #music-player {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 28px;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 340px;
+    max-width: 90vw;
+  }
 
-    transform:translateX(-50%);
+  .snowflake-icon {
+    font-size: 1.6rem;
+    animation: spin 8s linear infinite;
+    color: var(--gold);
+    filter: drop-shadow(0 0 8px rgba(245,200,66,0.6));
+    flex-shrink: 0;
+  }
 
-    z-index:20;
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-    background:rgba(255,255,255,.08);
+  .player-inner {
+    flex: 1;
+    min-width: 0;
+  }
 
-    backdrop-filter:blur(20px);
+  #song-select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.9);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.92rem;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    text-align: center;
+    padding: 4px 0;
+    letter-spacing: 0.5px;
+  }
 
-    border-radius:20px;
+  #song-select option {
+    background: #0a0e1a;
+    color: #fff;
+  }
 
-    padding:15px 30px;
+  .progress-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+    position: relative;
+  }
 
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), #ffaa00);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.5s linear;
+    box-shadow: 0 0 6px rgba(245,200,66,0.8);
+  }
 
-select,button{
+  .player-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
 
-    border:none;
-    outline:none;
+  .ctrl-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-    background:transparent;
+  .ctrl-btn:hover { color: var(--gold); transform: scale(1.1); }
 
-    color:white;
+  .play-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(245,200,66,0.2);
+    border: 1px solid rgba(245,200,66,0.4);
+    border-radius: 50%;
+    color: var(--gold);
+    font-size: 0.9rem;
+    animation: breathe 2s ease-in-out infinite;
+  }
 
-    font-size:16px;
+  @keyframes breathe {
+    0%,100% { box-shadow: 0 0 6px rgba(245,200,66,0.3); }
+    50% { box-shadow: 0 0 16px rgba(245,200,66,0.7), 0 0 30px rgba(245,200,66,0.3); }
+  }
 
-    cursor:pointer;
-}
+  /* ─── PHOTO HINT ─── */
+  #photo-hint {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
 
-.photo{
+  /* ─── LOADING ─── */
+  #loading-screen {
+    position: fixed;
+    inset: 0;
+    background: #000408;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    transition: opacity 1s ease;
+  }
 
-    position:absolute;
+  #loading-screen h2 {
+    font-family: 'Dancing Script', cursive;
+    font-size: 2.5rem;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(245,200,66,0.7);
+  }
 
-    width:140px;
+  .loading-dots {
+    display: flex; gap: 8px;
+  }
 
-    border:8px solid white;
+  .loading-dots span {
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: dotBounce 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-    box-shadow:
-    0 10px 30px rgba(0,0,0,.5);
+  @keyframes dotBounce {
+    0%,80%,100% { transform: scale(0.5); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
 
-    z-index:8;
+  /* ─── INTERACTION BUTTONS (mobile) ─── */
+  #touch-controls {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-    transition:.5s;
-}
+  .touch-btn {
+    width: 52px; height: 52px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
 
+  .touch-btn:hover, .touch-btn:active {
+    background: rgba(245,200,66,0.2);
+    border-color: rgba(245,200,66,0.5);
+  }
+
+  /* ─── VIGNETTE ─── */
+  #vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.65) 100%);
+  }
 </style>
 </head>
-
-
 <body>
 
-
-<div id="titleBox">
-
-    <div id="mainTitle">
-        Happy Graduation
-    </div>
-
-    <div id="subTitle">
-        A special gift from Mr. Huang to Santa Clara Cougars
-    </div>
-
+<div id="loading-screen">
+  <h2>Happy Graduation 🎓</h2>
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+  <p style="color:rgba(255,255,255,0.4);font-size:0.85rem;letter-spacing:2px;">Loading magic...</p>
 </div>
 
+<div id="vignette"></div>
+<div id="canvas-container"></div>
 
-<div id="statusBox">
-
-    <div id="phaseText">
-        Phase: TREE
-    </div>
-
-    <div style="margin-top:10px;">
-        Click to transform
-    </div>
-
+<!-- Title -->
+<div id="title-overlay">
+  <h1>Happy Graduation</h1>
+  <p>A special gift from Mr. Huang to Santa Clara Cougars</p>
 </div>
 
+<!-- Status HUD -->
+<div id="status-hud">
+  <div class="phase-badge" id="phase-badge">🌲 TREE</div>
+  <div id="status-text">Wave your hand or<br>hover to interact</div>
+  <div class="hint" id="hint-text">✋ Open palm → bloom<br>👊 Fist → reset</div>
+</div>
 
-<div id="musicPlayer">
+<!-- Camera Panel -->
+<div id="camera-panel">
+  <h3>✦ Hand Gesture</h3>
+  <div id="camera-preview">
+    <video id="webcam" autoplay playsinline muted></video>
+  </div>
+  <div id="gesture-display">No gesture detected</div>
+  <button id="camera-btn" onclick="toggleCamera()">📷 OPEN CAMERA</button>
+</div>
 
-    ❄️
+<!-- Touch Controls (mobile) -->
+<div id="touch-controls">
+  <button class="touch-btn" onclick="triggerBloom()" title="Bloom">✨</button>
+  <button class="touch-btn" onclick="triggerReset()" title="Reset">🔄</button>
+  <button class="touch-btn" onclick="rotatePrev()" title="Prev">◀</button>
+  <button class="touch-btn" onclick="rotateNext()" title="Next">▶</button>
+</div>
 
-    <select id="musicSelect">
+<!-- Photo Hint -->
+<div id="photo-hint" id="photo-hint">Click a photo to zoom in • Click again to zoom out</div>
 
-        <option value="1">听我说谢谢你</option>
-        <option value="2">健康过好年</option>
-        <option value="3">热爱105度的你</option>
-        <option value="4">新年好马</option>
-
+<!-- Music Player -->
+<div id="music-player">
+  <div class="snowflake-icon">❄</div>
+  <div class="player-inner">
+    <select id="song-select" onchange="changeSong(this.value)">
+      <option value="1">听我说谢谢你</option>
+      <option value="2">健康过好年</option>
+      <option value="3">热爱105度的你</option>
+      <option value="4">新年好马</option>
     </select>
-
-    <button onclick="playMusic()">
-        ▶ Play
-    </button>
-
-    <audio id="audio"></audio>
-
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+  <div class="player-controls">
+    <button class="ctrl-btn" onclick="prevSong()">⏮</button>
+    <button class="ctrl-btn play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+    <button class="ctrl-btn" onclick="nextSong()">⏭</button>
+  </div>
 </div>
 
-
-
-<!-- libraries -->
-
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-
-
+<audio id="audio-player" preload="none"></audio>
 
 <script>
+// ════════════════════════════════════════════════
+//  CONSTANTS & CONFIG
+// ════════════════════════════════════════════════
+const BASE_IMG = 'https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/images/photo';
+const BASE_MUS = 'https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/refs/heads/main/music/music';
+const PHOTO_COUNT = 10;
+const MUSIC_COUNT = 4;
 
+// State
+let phase = 'tree'; // tree | blooming | nebula | collapsing
+let cameraActive = false;
+let currentSong = 1;
+let isPlaying = false;
+let focusedPhoto = null;
+let nebulaRotation = 0;
+let targetNebulaRotation = 0;
+let handGesture = 'none';
+let gestureTimeout = null;
+let lastGestureTime = 0;
 
-// ============ Scene ============
-
+// ════════════════════════════════════════════════
+//  THREE.JS SETUP
+// ════════════════════════════════════════════════
+const { THREE } = window;
 const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 2, 18);
 
-const camera = new THREE.PerspectiveCamera(
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    60,
+// Lights
+const ambientLight = new THREE.AmbientLight(0x111122, 0.5);
+scene.add(ambientLight);
 
-    window.innerWidth / window.innerHeight,
+const warmLight = new THREE.PointLight(0xffa060, 2, 40);
+warmLight.position.set(5, 8, 5);
+scene.add(warmLight);
 
-    0.1,
+const coolLight = new THREE.PointLight(0x4060ff, 1.5, 40);
+coolLight.position.set(-6, 4, -5);
+scene.add(coolLight);
 
-    1000
+const topSpot = new THREE.SpotLight(0xffd080, 3, 30, Math.PI / 6, 0.3);
+topSpot.position.set(0, 15, 0);
+topSpot.target.position.set(0, 0, 0);
+scene.add(topSpot);
+scene.add(topSpot.target);
 
-);
+// ════════════════════════════════════════════════
+//  STARS BACKGROUND
+// ════════════════════════════════════════════════
+function createStars() {
+  const geo = new THREE.BufferGeometry();
+  const count = 3000;
+  const pos = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pos[i*3]   = (Math.random() - 0.5) * 200;
+    pos[i*3+1] = (Math.random() - 0.5) * 200;
+    pos[i*3+2] = (Math.random() - 0.5) * 200;
+    sizes[i] = Math.random() * 2 + 0.5;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-camera.position.z = 18;
+  const mat = new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.12, transparent: true,
+    opacity: 0.8, sizeAttenuation: true
+  });
+  return new THREE.Points(geo, mat);
+}
+const stars = createStars();
+scene.add(stars);
 
+// ════════════════════════════════════════════════
+//  PARTICLE TREE
+// ════════════════════════════════════════════════
+const PARTICLE_COUNT = 5000;
+const particlePositions = new Float32Array(PARTICLE_COUNT * 3);
+const particleTargets = new Float32Array(PARTICLE_COUNT * 3);   // tree targets
+const particleNebula  = new Float32Array(PARTICLE_COUNT * 3);   // nebula targets
+const particleCurrent = new Float32Array(PARTICLE_COUNT * 3);
 
+function getTreePosition(i) {
+  const t = i / PARTICLE_COUNT;
+  const height = t * 10 - 2;
+  const radius = Math.max(0, (5 - height * 0.9)) * (Math.random() * 0.5 + 0.5);
+  const angle = t * Math.PI * 40 + Math.random() * 0.5;
+  return [
+    Math.cos(angle) * radius,
+    height,
+    Math.sin(angle) * radius
+  ];
+}
 
-const renderer = new THREE.WebGLRenderer({
+function getNebulaPosition(i) {
+  const angle = (i / PARTICLE_COUNT) * Math.PI * 2;
+  const ringR  = 12 + (Math.random() - 0.5) * 6;
+  const ringH  = (Math.random() - 0.5) * 4;
+  const spread = Math.random() * 3;
+  return [
+    Math.cos(angle) * (ringR + spread),
+    ringH + (Math.random() - 0.5) * 2,
+    Math.sin(angle) * (ringR + spread)
+  ];
+}
 
-    antialias:true
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  const [tx, ty, tz] = getTreePosition(i);
+  const [nx, ny, nz] = getNebulaPosition(i);
+  particleTargets[i*3]=tx; particleTargets[i*3+1]=ty; particleTargets[i*3+2]=tz;
+  particleNebula[i*3]=nx;  particleNebula[i*3+1]=ny;  particleNebula[i*3+2]=nz;
+  particleCurrent[i*3]=tx; particleCurrent[i*3+1]=ty; particleCurrent[i*3+2]=tz;
+}
 
+const particleGeo = new THREE.BufferGeometry();
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particleCurrent.slice(), 3));
+
+const particleMat = new THREE.PointsMaterial({
+  color: 0x55ff88, size: 0.07, transparent: true,
+  opacity: 0.85, sizeAttenuation: true, vertexColors: false
+});
+const particleSystem = new THREE.Points(particleGeo, particleMat);
+scene.add(particleSystem);
+
+// ════════════════════════════════════════════════
+//  ORNAMENT BALLS
+// ════════════════════════════════════════════════
+const ORNAMENT_COLORS = [0xd4a843, 0x8b1a2f, 0x6a8fa8, 0xe07fa0, 0xe8d5a3];
+const ornaments = [];
+const ORNAMENT_COUNT = 30;
+
+function getOrnamentTreePos(i) {
+  const t = (i / ORNAMENT_COUNT) * 0.9;
+  const height = t * 9 - 1;
+  const radius = Math.max(0.3, (4.5 - height * 0.85));
+  const angle = t * Math.PI * 8;
+  return new THREE.Vector3(
+    Math.cos(angle) * radius * 0.85,
+    height,
+    Math.sin(angle) * radius * 0.85
+  );
+}
+
+for (let i = 0; i < ORNAMENT_COUNT; i++) {
+  const geo = new THREE.SphereGeometry(0.18, 16, 16);
+  const mat = new THREE.MeshStandardMaterial({
+    color: ORNAMENT_COLORS[i % ORNAMENT_COLORS.length],
+    metalness: 0.8, roughness: 0.2,
+    emissive: new THREE.Color(ORNAMENT_COLORS[i % ORNAMENT_COLORS.length]).multiplyScalar(0.15)
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  const treePos = getOrnamentTreePos(i);
+  mesh.position.copy(treePos);
+  mesh.userData = {
+    treePos: treePos.clone(),
+    nebulaPos: new THREE.Vector3(
+      (Math.random()-0.5)*25,
+      (Math.random()-0.5)*10,
+      (Math.random()-0.5)*25
+    ),
+    index: i,
+    floatOffset: Math.random() * Math.PI * 2
+  };
+  scene.add(mesh);
+  ornaments.push(mesh);
+}
+
+// ════════════════════════════════════════════════
+//  STAR ON TOP
+// ════════════════════════════════════════════════
+function createStar() {
+  const shape = new THREE.Shape();
+  const outerR = 0.5, innerR = 0.22, pts = 5;
+  for (let i = 0; i < pts * 2; i++) {
+    const angle = (i * Math.PI) / pts - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    if (i === 0) shape.moveTo(Math.cos(angle)*r, Math.sin(angle)*r);
+    else shape.lineTo(Math.cos(angle)*r, Math.sin(angle)*r);
+  }
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.1, bevelEnabled: false });
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 2,
+    metalness: 0.9, roughness: 0.1
+  });
+  const star = new THREE.Mesh(geo, mat);
+  star.position.set(0, 8.5, 0);
+  star.rotation.x = -Math.PI / 2;
+  return star;
+}
+const topStar = createStar();
+scene.add(topStar);
+
+// ════════════════════════════════════════════════
+//  SNOWFLAKES
+// ════════════════════════════════════════════════
+const snowflakes = [];
+const SNOW_COUNT = 60;
+for (let i = 0; i < SNOW_COUNT; i++) {
+  const geo = new THREE.SphereGeometry(0.04, 4, 4);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+  const sf = new THREE.Mesh(geo, mat);
+  sf.position.set(
+    (Math.random()-0.5)*16,
+    Math.random()*12-2,
+    (Math.random()-0.5)*16
+  );
+  sf.userData = {
+    vel: new THREE.Vector3((Math.random()-0.5)*0.01, -0.02-Math.random()*0.02, (Math.random()-0.5)*0.01),
+    spin: Math.random()*0.05
+  };
+  scene.add(sf);
+  snowflakes.push(sf);
+}
+
+// ════════════════════════════════════════════════
+//  PHOTO CARDS
+// ════════════════════════════════════════════════
+const photoCards = [];
+const photoTextures = [];
+const textureLoader = new THREE.TextureLoader();
+
+function createPolaroidCard(texture, isLandscape) {
+  const group = new THREE.Group();
+
+  // Frame dims
+  const fw = isLandscape ? 2.2 : 1.6;
+  const fh = isLandscape ? 1.6 : 2.2;
+
+  // White frame
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xfaf5e4, roughness: 0.6, metalness: 0.0 });
+  const frameGeo = new THREE.BoxGeometry(fw + 0.3, fh + 0.5, 0.05);
+  const frame = new THREE.Mesh(frameGeo, frameMat);
+  group.add(frame);
+
+  // Photo surface
+  const photoMat = new THREE.MeshBasicMaterial({ map: texture });
+  const photoGeo = new THREE.PlaneGeometry(fw, fh);
+  const photoMesh = new THREE.Mesh(photoGeo, photoMat);
+  photoMesh.position.z = 0.03;
+  photoMesh.position.y = 0.08;
+  group.add(photoMesh);
+
+  // Shadow plane
+  const shadowGeo = new THREE.PlaneGeometry(fw + 0.35, fh + 0.6);
+  const shadowMat = new THREE.MeshBasicMaterial({
+    color: 0x000000, transparent: true, opacity: 0.3, side: THREE.FrontSide
+  });
+  const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+  shadowMesh.position.z = -0.01;
+  group.add(shadowMesh);
+
+  return group;
+}
+
+function loadPhotos() {
+  let loaded = 0;
+  for (let i = 1; i <= PHOTO_COUNT; i++) {
+    const url = `${BASE_IMG}${i}.jpg`;
+    textureLoader.load(url, (tex) => {
+      const isLandscape = tex.image.width > tex.image.height;
+      const card = createPolaroidCard(tex, isLandscape);
+      const angle = ((i-1) / PHOTO_COUNT) * Math.PI * 2;
+      const r = 12;
+      card.userData = {
+        index: i,
+        treePos: new THREE.Vector3(
+          (Math.random()-0.5)*1.5,
+          (Math.random()-0.5)*8,
+          (Math.random()-0.5)*1.5
+        ),
+        nebulaAngle: angle,
+        nebulaR: r,
+        floatOffset: Math.random() * Math.PI * 2,
+        focused: false
+      };
+      // Start at tree center
+      card.position.copy(card.userData.treePos);
+      card.scale.setScalar(0);
+      card.visible = false;
+      scene.add(card);
+      photoCards.push(card);
+
+      loaded++;
+      if (loaded === PHOTO_COUNT) updateLoadingProgress(100);
+    }, undefined, () => {
+      loaded++;
+    });
+  }
+}
+
+function getNebulaCardPos(angle, r) {
+  return new THREE.Vector3(
+    Math.cos(angle) * r,
+    (Math.random()-0.5)*2,
+    Math.sin(angle) * r
+  );
+}
+
+// ════════════════════════════════════════════════
+//  MOUSE REPULSION
+// ════════════════════════════════════════════════
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+let mouseWorld = new THREE.Vector3();
+let mouseActive = false;
+const repulsionStrength = 1.2;
+
+document.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  mouseActive = true;
+  if (phase !== 'tree') return;
+
+  raycaster.setFromCamera(mouse, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0,0,1), 0);
+  raycaster.ray.intersectPlane(plane, mouseWorld);
 });
 
-renderer.setSize(
+document.addEventListener('mouseleave', () => { mouseActive = false; });
 
-    window.innerWidth,
+// Touch repulsion
+document.addEventListener('touchmove', (e) => {
+  if (phase !== 'tree') return;
+  const t = e.touches[0];
+  mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+  mouseActive = true;
+  raycaster.setFromCamera(mouse, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0,0,1), 0);
+  raycaster.ray.intersectPlane(plane, mouseWorld);
+}, { passive: true });
 
-    window.innerHeight
+// ════════════════════════════════════════════════
+//  PHASE TRANSITIONS
+// ════════════════════════════════════════════════
+function updateHUD() {
+  const badges = {
+    'tree': '🌲 TREE',
+    'blooming': '✨ BLOOMING',
+    'nebula': '🌌 NEBULA',
+    'collapsing': '🔄 COLLAPSING'
+  };
+  const hints = {
+    'tree': '✋ Open palm → bloom<br>🖱 Hover to interact',
+    'blooming': '⏳ Transforming...',
+    'nebula': '✋ Swipe → rotate • Click photo to zoom<br>👊 Fist → reset',
+    'collapsing': '⏳ Resetting...'
+  };
+  document.getElementById('phase-badge').textContent = badges[phase] || phase;
+  document.getElementById('hint-text').innerHTML = hints[phase] || '';
 
-);
-
-renderer.setPixelRatio(
-
-    window.devicePixelRatio
-
-);
-
-document.body.appendChild(
-
-    renderer.domElement
-
-);
-
-
-
-// ============ Lights ============
-
-const warmLight = new THREE.PointLight(
-
-    0xffddaa,
-
-    150
-
-);
-
-warmLight.position.set(
-
-    5,5,5
-
-);
-
-scene.add(
-
-    warmLight
-
-);
-
-
-const coolLight = new THREE.PointLight(
-
-    0x66aaff,
-
-    80
-
-);
-
-coolLight.position.set(
-
-    -5,5,-5
-
-);
-
-scene.add(
-
-    coolLight
-
-);
-
-
-
-
-// ============ Stars Background ============
-
-const starGeometry = new THREE.BufferGeometry();
-
-const starPositions = [];
-
-for(let i=0;i<2000;i++){
-
-    starPositions.push(
-
-        (Math.random()-0.5)*200,
-
-        (Math.random()-0.5)*200,
-
-        (Math.random()-0.5)*200
-
-    );
-
+  const photoHint = document.getElementById('photo-hint');
+  photoHint.style.opacity = phase === 'nebula' ? '1' : '0';
 }
 
-starGeometry.setAttribute(
+function triggerBloom() {
+  if (phase !== 'tree') return;
+  phase = 'blooming';
+  updateHUD();
 
-    "position",
+  // Hide title
+  document.getElementById('title-overlay').style.opacity = '0';
 
-    new THREE.Float32BufferAttribute(
+  // Explode particles
+  const posAttr = particleGeo.attributes.position;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const tx = particleNebula[i*3], ty = particleNebula[i*3+1], tz = particleNebula[i*3+2];
+    const delay = Math.random() * 0.5;
+    const curr = { x: posAttr.array[i*3], y: posAttr.array[i*3+1], z: posAttr.array[i*3+2] };
+    gsap.to(curr, {
+      x: tx, y: ty, z: tz,
+      duration: 1.2 + Math.random() * 0.6,
+      delay,
+      ease: 'power3.out',
+      onUpdate() {
+        posAttr.array[i*3]=curr.x; posAttr.array[i*3+1]=curr.y; posAttr.array[i*3+2]=curr.z;
+        posAttr.needsUpdate = true;
+      }
+    });
+  }
 
-        starPositions,
+  // Change particle color
+  gsap.to(particleMat.color, { r:0.2, g:0.4, b:1.0, duration:1.5 });
 
-        3
+  // Explode ornaments
+  ornaments.forEach((o, i) => {
+    const np = o.userData.nebulaPos;
+    gsap.to(o.position, {
+      x: np.x, y: np.y, z: np.z,
+      duration: 1.0 + Math.random() * 0.8,
+      delay: Math.random() * 0.4,
+      ease: 'power3.out'
+    });
+    gsap.to(o.rotation, { y: Math.PI * 4, duration: 2, ease: 'power2.out' });
+  });
 
-    )
+  // Hide top star
+  gsap.to(topStar.scale, { x:0, y:0, z:0, duration:0.5 });
 
-);
+  // Show and animate photo cards
+  photoCards.forEach((card, i) => {
+    card.visible = true;
+    const angle = card.userData.nebulaAngle + nebulaRotation;
+    const r = card.userData.nebulaR;
+    const target = {
+      x: Math.cos(angle)*r,
+      y: (Math.sin(card.userData.floatOffset)*1.5),
+      z: Math.sin(angle)*r
+    };
+    gsap.to(card.scale, { x:1, y:1, z:1, duration:0.8, delay: 0.3 + i*0.08, ease:'back.out(1.5)' });
+    gsap.to(card.position, {
+      x: target.x, y: target.y, z: target.z,
+      duration: 1.2, delay: 0.2 + i*0.07, ease:'power3.out'
+    });
+    gsap.to(card.rotation, {
+      y: angle + Math.PI,
+      duration: 1.2, delay: 0.2 + i*0.07, ease:'power3.out'
+    });
+  });
 
+  // Camera pullback
+  gsap.to(camera.position, { z: 26, y: 4, duration: 1.5, ease: 'power2.inOut' });
 
-const stars = new THREE.Points(
-
-    starGeometry,
-
-    new THREE.PointsMaterial({
-
-        color:0xffffff,
-
-        size:.2
-
-    })
-
-);
-
-scene.add(
-
-    stars
-
-);
-
-
-
-
-// ============ Tree Particles ============
-
-const particleCount = 5000;
-
-const treeGeometry = new THREE.BufferGeometry();
-
-const treePositions = [];
-
-const originalPositions = [];
-
-
-
-for(let i=0;i<particleCount;i++){
-
-    const height = Math.random()*8;
-
-    const radius = (1-height/8)*2.5;
-
-    const angle = Math.random()*Math.PI*2;
-
-
-    const x = Math.cos(angle)*radius;
-
-    const y = height - 4;
-
-    const z = Math.sin(angle)*radius;
-
-
-    treePositions.push(
-
-        x,y,z
-
-    );
-
-
-    originalPositions.push(
-
-        x,y,z
-
-    );
-
+  setTimeout(() => {
+    phase = 'nebula';
+    updateHUD();
+  }, 2000);
 }
 
+function triggerReset() {
+  if (phase !== 'nebula') return;
+  phase = 'collapsing';
+  updateHUD();
+  focusedPhoto = null;
 
+  const posAttr = particleGeo.attributes.position;
 
-treeGeometry.setAttribute(
+  // Particles back to tree
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const tx = particleTargets[i*3], ty = particleTargets[i*3+1], tz = particleTargets[i*3+2];
+    const curr = { x: posAttr.array[i*3], y: posAttr.array[i*3+1], z: posAttr.array[i*3+2] };
+    gsap.to(curr, {
+      x:tx, y:ty, z:tz,
+      duration: 1.0 + Math.random()*0.5,
+      delay: Math.random()*0.3,
+      ease: 'power2.inOut',
+      onUpdate() {
+        posAttr.array[i*3]=curr.x; posAttr.array[i*3+1]=curr.y; posAttr.array[i*3+2]=curr.z;
+        posAttr.needsUpdate = true;
+      }
+    });
+  }
 
-    "position",
+  gsap.to(particleMat.color, { r:0.33, g:1.0, b:0.53, duration:1.5 });
 
-    new THREE.Float32BufferAttribute(
+  // Ornaments back
+  ornaments.forEach(o => {
+    gsap.to(o.position, { x: o.userData.treePos.x, y: o.userData.treePos.y, z: o.userData.treePos.z, duration:1.2, ease:'power2.inOut' });
+    gsap.to(o.rotation, { y: 0, duration: 1.2 });
+  });
 
-        treePositions,
+  // Photos hide
+  photoCards.forEach(card => {
+    gsap.to(card.scale, { x:0, y:0, z:0, duration:0.5, delay:Math.random()*0.3 });
+    gsap.to(card.position, { x:0, y:0, z:0, duration:1.0 });
+  });
 
-        3
+  // Star back
+  gsap.to(topStar.scale, { x:1, y:1, z:1, duration:0.8, delay:0.8 });
 
-    )
+  // Camera back
+  gsap.to(camera.position, { z:18, y:2, duration:1.5, ease:'power2.inOut' });
 
-);
+  setTimeout(() => {
+    phase = 'tree';
+    document.getElementById('title-overlay').style.opacity = '1';
+    photoCards.forEach(card => { card.visible = false; });
+    updateHUD();
+  }, 2200);
+}
 
+// ════════════════════════════════════════════════
+//  NEBULA ROTATION / PHOTO CLICK
+// ════════════════════════════════════════════════
+function rotateNext() {
+  if (phase !== 'nebula') return;
+  targetNebulaRotation += (Math.PI * 2) / PHOTO_COUNT;
+}
+function rotatePrev() {
+  if (phase !== 'nebula') return;
+  targetNebulaRotation -= (Math.PI * 2) / PHOTO_COUNT;
+}
 
+function updatePhotoPositions() {
+  photoCards.forEach((card, i) => {
+    if (!card.visible || card.userData.focused) return;
+    const angle = card.userData.nebulaAngle + nebulaRotation;
+    const r = card.userData.nebulaR;
+    const floatY = Math.sin(Date.now() * 0.001 + card.userData.floatOffset) * 0.3;
+    card.position.x = Math.cos(angle) * r;
+    card.position.y = floatY;
+    card.position.z = Math.sin(angle) * r;
+    card.rotation.y = angle + Math.PI;
+  });
+}
 
-const treeMaterial = new THREE.PointsMaterial({
+// Photo click detection
+renderer.domElement.addEventListener('click', (e) => {
+  if (phase !== 'nebula') return;
+  mouse.x = (e.clientX / window.innerWidth)*2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight)*2 + 1;
+  raycaster.setFromCamera(mouse, camera);
 
-    color:0x00ff88,
+  const meshes = [];
+  photoCards.forEach(card => {
+    card.traverse(c => { if (c.isMesh) meshes.push(c); });
+  });
 
-    size:.12
-
+  const hits = raycaster.intersectObjects(meshes);
+  if (hits.length > 0) {
+    const hitObj = hits[0].object;
+    let hitCard = null;
+    photoCards.forEach(card => {
+      card.traverse(c => { if (c === hitObj) hitCard = card; });
+    });
+    if (hitCard) {
+      if (focusedPhoto === hitCard) {
+        // Unfocus
+        focusedPhoto.userData.focused = false;
+        focusedPhoto = null;
+        gsap.to(camera.position, { z:26, y:4, duration:1.0, ease:'power2.inOut' });
+      } else {
+        if (focusedPhoto) { focusedPhoto.userData.focused = false; }
+        focusedPhoto = hitCard;
+        hitCard.userData.focused = true;
+        const wp = hitCard.getWorldPosition(new THREE.Vector3());
+        gsap.to(camera.position, {
+          x: wp.x * 0.6, y: wp.y,
+          z: wp.z > 0 ? wp.z - 5 : wp.z + 5,
+          duration: 1.0, ease:'power2.inOut'
+        });
+      }
+    }
+  }
 });
 
+// ════════════════════════════════════════════════
+//  CAMERA (Webcam + Gesture)
+// ════════════════════════════════════════════════
+let videoStream = null;
+const video = document.getElementById('webcam');
+let handposeDetectInterval = null;
 
-const tree = new THREE.Points(
+async function toggleCamera() {
+  const btn = document.getElementById('camera-btn');
+  if (cameraActive) {
+    if (videoStream) {
+      videoStream.getTracks().forEach(t => t.stop());
+      videoStream = null;
+    }
+    video.srcObject = null;
+    cameraActive = false;
+    btn.textContent = '📷 OPEN CAMERA';
+    clearInterval(handposeDetectInterval);
+    document.getElementById('gesture-display').textContent = 'Camera off';
+  } else {
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { width:320, height:240, facingMode:'user' } });
+      video.srcObject = videoStream;
+      cameraActive = true;
+      btn.textContent = '🚫 CLOSE CAMERA';
+      startSimpleGestureDetection();
+    } catch(err) {
+      document.getElementById('gesture-display').textContent = 'Camera access denied';
+    }
+  }
+}
 
-    treeGeometry,
+// Simple brightness-based gesture detection (no ML library required)
+// Uses pixel analysis on video frames for basic open/closed detection
+function startSimpleGestureDetection() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 80; canvas.height = 60;
+  const ctx = canvas.getContext('2d');
+  let frameCount = 0;
+  let prevBrightness = 0;
+  let gestureBuffer = [];
 
-    treeMaterial
+  handposeDetectInterval = setInterval(() => {
+    if (!cameraActive || !video.videoWidth) return;
+    ctx.drawImage(video, 0, 0, 80, 60);
+    const imageData = ctx.getImageData(0, 0, 80, 60).data;
 
-);
+    // Simple skin detection heuristic
+    let skinPixels = 0;
+    let totalBrightness = 0;
+    for (let i = 0; i < imageData.length; i += 4) {
+      const r = imageData[i], g = imageData[i+1], b = imageData[i+2];
+      totalBrightness += (r+g+b)/3;
+      // Basic skin color range
+      if (r > 95 && g > 40 && b > 20 && r > g && r > b && Math.abs(r-g) > 15) skinPixels++;
+    }
+    const skinRatio = skinPixels / (80*60);
+    const brightness = totalBrightness / (80*60);
 
-scene.add(
+    gestureBuffer.push(skinRatio);
+    if (gestureBuffer.length > 8) gestureBuffer.shift();
+    const avgSkin = gestureBuffer.reduce((a,b)=>a+b,0)/gestureBuffer.length;
 
-    tree
+    let gesture = 'none';
+    if (avgSkin > 0.12) gesture = 'open_palm';
+    else if (avgSkin > 0.05 && avgSkin < 0.09) gesture = 'closed_fist';
 
-);
-
-
-
-let exploded = false;
-
-
-
-
-// ============ Interaction ============
-
-document.addEventListener(
-
-    "click",
-
-    ()=>{
-
-        if(!exploded){
-
-            explodeTree();
-
-        }
-
-        else{
-
-            restoreTree();
-
-        }
-
+    if (gesture !== handGesture) {
+      handGesture = gesture;
+      handleGesture(gesture);
     }
 
-);
+    const labels = { 'open_palm':'✋ Open Palm', 'closed_fist':'✊ Closed Fist', 'none':'· No Gesture' };
+    document.getElementById('gesture-display').textContent = labels[gesture] || '· Detecting...';
+  }, 300);
+}
 
+let lastGestureActivation = 0;
+function handleGesture(g) {
+  const now = Date.now();
+  if (now - lastGestureActivation < 2000) return;
 
+  if (g === 'open_palm') {
+    lastGestureActivation = now;
+    if (phase === 'tree') triggerBloom();
+    else if (phase === 'nebula') rotateNext();
+  } else if (g === 'closed_fist') {
+    lastGestureActivation = now;
+    if (phase === 'nebula') triggerReset();
+  }
+}
 
+// ════════════════════════════════════════════════
+//  MUSIC PLAYER
+// ════════════════════════════════════════════════
+const audio = document.getElementById('audio-player');
 
-function explodeTree(){
+const songNames = ['听我说谢谢你','健康过好年','热爱105度的你','新年好马'];
 
-    exploded = true;
+function loadSong(n) {
+  audio.src = `${BASE_MUS}${n}.m4a`;
+  audio.load();
+  currentSong = n;
+  document.getElementById('song-select').value = n;
+}
 
-    document.getElementById(
+function togglePlay() {
+  const btn = document.getElementById('play-btn');
+  if (isPlaying) {
+    audio.pause();
+    btn.textContent = '▶';
+    isPlaying = false;
+  } else {
+    audio.play().catch(()=>{});
+    btn.textContent = '⏸';
+    isPlaying = true;
+  }
+}
 
-        "phaseText"
+function prevSong() {
+  let n = currentSong - 1;
+  if (n < 1) n = MUSIC_COUNT;
+  loadSong(n);
+  if (isPlaying) { audio.play().catch(()=>{}); }
+}
 
-    ).innerHTML = "Phase: NEBULA";
+function nextSong() {
+  let n = currentSong + 1;
+  if (n > MUSIC_COUNT) n = 1;
+  loadSong(n);
+  if (isPlaying) { audio.play().catch(()=>{}); }
+}
 
+function changeSong(v) {
+  loadSong(parseInt(v));
+  if (isPlaying) { audio.play().catch(()=>{}); }
+}
 
-    const positions =
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+});
 
-    treeGeometry.attributes.position.array;
+audio.addEventListener('ended', () => { nextSong(); });
 
+loadSong(1);
 
-    for(let i=0;i<particleCount;i++){
+// ════════════════════════════════════════════════
+//  ANIMATE LOOP
+// ════════════════════════════════════════════════
+let time = 0;
 
-        const angle =
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.016;
 
-        (i/particleCount)*Math.PI*2;
+  // Stars twinkle
+  stars.rotation.y += 0.0001;
 
+  // Snowflakes
+  if (phase === 'tree') {
+    snowflakes.forEach(sf => {
+      sf.position.add(sf.userData.vel);
+      sf.rotation.z += sf.userData.spin;
+      if (sf.position.y < -3) sf.position.y = 12;
+      if (sf.position.x > 8) sf.position.x = -8;
+      if (sf.position.x < -8) sf.position.x = 8;
+    });
+  }
 
-        gsap.to(
+  // Top star spin
+  topStar.rotation.z += 0.01;
 
-            positions,
+  // Ornament float
+  if (phase === 'tree') {
+    ornaments.forEach((o, i) => {
+      o.position.y = o.userData.treePos.y + Math.sin(time*1.2 + o.userData.floatOffset) * 0.08;
+    });
+  }
 
-            {
-
-                [i*3]:
-
-                Math.cos(angle)*8,
-
-
-                [i*3+2]:
-
-                Math.sin(angle)*8,
-
-
-                duration:2,
-
-
-                onUpdate:()=>{
-
-                    treeGeometry.attributes.position.needsUpdate = true;
-
-                }
-
-            }
-
-        );
-
+  // Mouse repulsion on particles
+  if (phase === 'tree' && mouseActive && mouseWorld) {
+    const posAttr = particleGeo.attributes.position;
+    let updated = false;
+    for (let i = 0; i < PARTICLE_COUNT; i += 5) {
+      const px = posAttr.array[i*3], py = posAttr.array[i*3+1], pz = posAttr.array[i*3+2];
+      const dx = px - mouseWorld.x, dy = py - mouseWorld.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 2.5 && dist > 0.01) {
+        const force = (2.5 - dist) / 2.5 * repulsionStrength;
+        const nx2 = px + (dx/dist) * force * 0.1;
+        const ny2 = py + (dy/dist) * force * 0.1;
+        // Lerp back gently
+        posAttr.array[i*3]   = nx2 * 0.3 + particleTargets[i*3] * 0.7;
+        posAttr.array[i*3+1] = ny2 * 0.3 + particleTargets[i*3+1] * 0.7;
+        posAttr.array[i*3+2] = pz  * 0.3 + particleTargets[i*3+2] * 0.7;
+        updated = true;
+      }
     }
+    if (updated) posAttr.needsUpdate = true;
+  }
 
+  // Nebula rotation lerp
+  if (phase === 'nebula') {
+    nebulaRotation += (targetNebulaRotation - nebulaRotation) * 0.05;
+    updatePhotoPositions();
 
-    showPhotos();
+    // Warm lights pulse
+    warmLight.intensity = 2 + Math.sin(time*1.5)*0.3;
+  }
 
+  renderer.render(scene, camera);
 }
 
+// ════════════════════════════════════════════════
+//  RESIZE
+// ════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-
-
-function restoreTree(){
-
-    exploded = false;
-
-    document.getElementById(
-
-        "phaseText"
-
-    ).innerHTML = "Phase: TREE";
-
-
-    const positions =
-
-    treeGeometry.attributes.position.array;
-
-
-    for(let i=0;i<particleCount*3;i++){
-
-        gsap.to(
-
-            positions,
-
-            {
-
-                [i]:
-
-                originalPositions[i],
-
-                duration:2,
-
-
-                onUpdate:()=>{
-
-                    treeGeometry.attributes.position.needsUpdate = true;
-
-                }
-
-            }
-
-        );
-
-    }
-
-
-    hidePhotos();
-
+// ════════════════════════════════════════════════
+//  LOADING
+// ════════════════════════════════════════════════
+function updateLoadingProgress(pct) {
+  if (pct >= 100) {
+    setTimeout(() => {
+      const ls = document.getElementById('loading-screen');
+      ls.style.opacity = '0';
+      setTimeout(() => { ls.style.display = 'none'; }, 1000);
+    }, 500);
+  }
 }
 
-
-
-
-// ============ Photos ============
-
-function showPhotos(){
-
-    hidePhotos();
-
-
-    for(let i=1;i<=10;i++){
-
-        const img = document.createElement("img");
-
-
-        img.src =
-
-        `https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/main/images/photo${i}.jpg`;
-
-
-        img.className = "photo";
-
-        img.dataset.photo = "yes";
-
-
-        const angle =
-
-        (i/10)*Math.PI*2;
-
-
-        const x =
-
-        Math.cos(angle)*300;
-
-
-        const y =
-
-        Math.sin(angle)*200;
-
-
-        img.style.left =
-
-        `calc(50% + ${x}px)`;
-
-
-        img.style.top =
-
-        `calc(50% + ${y}px)`;
-
-
-        document.body.appendChild(
-
-            img
-
-        );
-
-    }
-
-}
-
-
-
-function hidePhotos(){
-
-    document
-
-    .querySelectorAll(
-
-        "[data-photo]"
-
-    )
-
-    .forEach(
-
-        el=>el.remove()
-
-    );
-
-}
-
-
-
-
-// ============ Music ============
-
-function playMusic(){
-
-    const index =
-
-    document.getElementById(
-
-        "musicSelect"
-
-    ).value;
-
-
-    const audio =
-
-    document.getElementById(
-
-        "audio"
-
-    );
-
-
-    audio.src =
-
-    `https://raw.githubusercontent.com/Bingley-A/Santa-Clara-graduation-gift/main/music/music${index}.m4a`;
-
-
-    audio.play();
-
-}
-
-
-
-
-// ============ Animation ============
-
-function animate(){
-
-    requestAnimationFrame(
-
-        animate
-
-    );
-
-
-    tree.rotation.y += 0.003;
-
-    stars.rotation.y += 0.0008;
-
-
-    renderer.render(
-
-        scene,
-
-        camera
-
-    );
-
-}
-
-
+// Start loading
+loadPhotos();
 animate();
+updateHUD();
 
+// Hide loading after 3s regardless
+setTimeout(() => updateLoadingProgress(100), 3000);
 
-
-
-// ============ Resize ============
-
-window.addEventListener(
-
-    "resize",
-
-    ()=>{
-
-        camera.aspect =
-
-        window.innerWidth /
-
-        window.innerHeight;
-
-
-        camera.updateProjectionMatrix();
-
-
-        renderer.setSize(
-
-            window.innerWidth,
-
-            window.innerHeight
-
-        );
-
-    }
-
-);
-
-
+// ════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'b' || e.key === 'B') triggerBloom();
+  if (e.key === 'r' || e.key === 'R') triggerReset();
+  if (e.key === 'ArrowRight') rotateNext();
+  if (e.key === 'ArrowLeft') rotatePrev();
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+});
 </script>
-
-
 </body>
 </html>
